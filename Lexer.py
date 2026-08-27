@@ -91,24 +91,24 @@ class Lexer:
             'start': {
                 'alpha': self.state_identifier,
                 'digit': self.state_number,
-                '+': self.state_simple_token,
-                '-': self.state_simple_token,
+                '+': self.state_second,
+                '-': self.state_second,
                 '/': self.state_slash,
-                '*': self.state_simple_token,
-                '%': self.state_simple_token,
-                '<': self.state_less,
-                '>': self.state_greater,
-                '=': self.state_assign,
-                '!': self.state_not,
+                '*': self.state_second,
+                '%': self.state_second,
+                '<': self.state_second,
+                '>': self.state_second,
+                '=': self.state_second,
+                '!': self.state_second,
                 '&': self.state_and,
                 '|': self.state_or,
-                '(': self.state_simple_token,
-                ')': self.state_simple_token,
+                '(': self.state_second,
+                ')': self.state_second,
                 '"': self.state_string,
-                '{': self.state_simple_token,
-                '}': self.state_simple_token,
-                ',': self.state_simple_token,
-                ';': self.state_simple_token,
+                '{': self.state_second,
+                '}': self.state_second,
+                ',': self.state_second,
+                ';': self.state_second,
                 'whitespace': self.state_whitespace,
                 },
 
@@ -118,22 +118,6 @@ class Lexer:
                 'default': None,
             },
 
-           'assign': {
-                '=': 'EQUAL',
-                'default': 'ASSIGN',
-            },
-            'less': {
-                '=': 'LESS_EQUAL',
-                'default': 'LESS',
-            },
-            'greater': {
-                '=': 'GREATER_EQUAL',
-                'default': 'GREATER',
-            },
-            'NOT': {
-                '=': 'NOT_EQUAL',
-                'default': 'NOT',
-            },
             'AND': {
                 '&': 'LOGICAL_AND',
                 'default': 'INVALID',
@@ -154,7 +138,12 @@ class Lexer:
             '{': TokenKind.LEFT_BRACE,
             '}': TokenKind.RIGHT_BRACE,
             ',': TokenKind.COMMA,
-            ';': TokenKind.SEMICOLON
+            ';': TokenKind.SEMICOLON,
+            ">": TokenKind.GREATER,
+            "<": TokenKind.LESS,
+            "!": TokenKind.LOGICAL_NOT,
+            "=": TokenKind.ASSIGN,
+            'default':None
         }
 
         self.keywords = {
@@ -170,8 +159,38 @@ class Lexer:
             "print": TokenKind.KW_PRINT
         }
 
-    #def state_second(self) -> Token:
+        self.dualoperands = {
+            ">=": TokenKind.GREATER_EQUAL,
+            "<=": TokenKind.LESS_EQUAL,
+            "!=": TokenKind.NOT_EQUAL,
+            "==": TokenKind.EQUAL_EQUAL,
+            'default': None
+        }
 
+    def state_second(self) -> Token:
+        initial_line = self.line
+        initial_column = self.column
+
+        lexeme = ""
+        lexeme += self.source[self.position]
+
+        self.position += 1
+        self.column += 1
+
+        next_char = self.source[self.position] if self.position < self.length else 'EOF'
+
+        if next_char == "=":
+            lexeme += next_char
+
+            self.position += 1
+            self.column += 1
+
+            kind = self.dualoperands[lexeme]   
+        else:
+            kind = self.simple_tokens[lexeme]
+
+
+        return Token(kind=kind, lexeme=lexeme, value=None, line=initial_line, column=initial_column)
 
 
 
@@ -216,91 +235,7 @@ class Lexer:
         self.column += 1            
 
         return Token(kind=TokenKind.LOGICAL_AND,lexeme="&&", value=None, line=initial_line, column=initial_column) 
-        
     
-
-    def state_not(self) -> Token:
-        initial_line = self.line
-        initial_column = self.column
-        
-        self.position += 1
-        self.column += 1      
-
-        next_char = self.source[self.position] if self.position < self.length else 'EOF'
-        
-        handler = self.transition_table['NOT'].get(next_char, self.transition_table['NOT']['default'])
-
-        if handler == 'NOT_EQUAL':
-            self.position += 1
-            self.column += 1
-
-            return Token(kind=TokenKind.NOT_EQUAL, lexeme="!=", value=None, line=initial_line, column=initial_column)
-
-        return Token(kind=TokenKind.LOGICAL_NOT, lexeme="!", value=None, line=initial_line, column=initial_column)
-
-
-
-    def state_greater(self) -> Token:
-        initial_line = self.line
-        initial_column = self.column
-        
-        self.position += 1
-        self.column += 1      
-
-        next_char = self.source[self.position] if self.position < self.length else 'EOF'
-        
-        handler = self.transition_table['greater'].get(next_char, self.transition_table['greater']['default'])
-
-        if handler == 'GREATER_EQUAL':
-            self.position += 1
-            self.column += 1
-
-            return Token(kind=TokenKind.GREATER_EQUAL, lexeme=">=", value=None, line=initial_line, column=initial_column)
-
-        return Token(kind=TokenKind.GREATER, lexeme=">", value=None, line=initial_line, column=initial_column)
-          
-
-
-    def state_less(self) -> Token:
-        initial_line = self.line
-        initial_column = self.column
-
-        self.position += 1
-        self.column += 1        
-
-        next_char = self.source[self.position] if self.position < self.length else 'EOF'
-        
-        handler = self.transition_table['less'].get(next_char, self.transition_table['less']['default'])
-
-        if handler == 'LESS_EQUAL':
-            self.position += 1
-            self.column += 1
-
-            return Token(kind=TokenKind.LESS_EQUAL, lexeme="<=", value=None, line=initial_line, column=initial_column)
-
-        return Token(kind=TokenKind.LESS, lexeme="<", value=None, line=initial_line, column=initial_column)
-
-        
-
-    def state_assign(self) -> Token:
-        initial_line = self.line
-        initial_column = self.column
-
-        self.position += 1
-        self.column += 1
-
-        next_char = self.source[self.position] if self.position < self.length else 'EOF'
-
-        handler = self.transition_table['assign'].get(next_char, self.transition_table['assign']['default'])
-
-        if handler == 'EQUAL':
-            self.position += 1
-            self.column += 1
-
-            return Token(kind= TokenKind.EQUAL_EQUAL, lexeme="==", value=None, line=initial_line, column=initial_column)
-
-        return Token(kind=TokenKind.ASSIGN, lexeme='=', value=None, line=initial_line,column=initial_column)
-
 
 
     def state_comment_line(self) -> None:
@@ -360,20 +295,6 @@ class Lexer:
             return self.state_comment_block(initial_line=initial_line, initial_column=initial_column)
         
         return Token(kind=TokenKind.SLASH, lexeme='/', value= None, line= initial_line, column=initial_column )
-
-
-
-    def state_simple_token(self) -> Token:
-        initial_line = self.line
-        initial_column = self.column
-
-        char = self.source[self.position]
-        kind = self.simple_tokens[char]
-
-        self.column += 1
-        self.position += 1
-
-        return Token(kind, char, None, initial_line, initial_column)
 
 
 
@@ -556,4 +477,3 @@ class Lexer:
     def scan(self) -> list[Token]:
 
         return list(self.tokens())
-
