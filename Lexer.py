@@ -100,8 +100,8 @@ class Lexer:
                 '>': self.state_second,
                 '=': self.state_second,
                 '!': self.state_second,
-                '&': self.state_and,
-                '|': self.state_or,
+                '&': self.state_and_or,
+                '|': self.state_and_or,
                 '(': self.state_second,
                 ')': self.state_second,
                 '"': self.state_string,
@@ -118,14 +118,6 @@ class Lexer:
                 'default': None,
             },
 
-            'AND': {
-                '&': 'LOGICAL_AND',
-                'default': 'INVALID',
-            },
-            'OR': {
-                '|': 'LOGICAL_OR',
-                'default': 'INVALID',
-            } 
         }
 
         self.simple_tokens = {
@@ -164,6 +156,8 @@ class Lexer:
             "<=": TokenKind.LESS_EQUAL,
             "!=": TokenKind.NOT_EQUAL,
             "==": TokenKind.EQUAL_EQUAL,
+            "&&": TokenKind.LOGICAL_AND,
+            "||": TokenKind.LOGICAL_OR,
             'default': None
         }
 
@@ -194,48 +188,30 @@ class Lexer:
 
 
 
-    def state_or(self) -> Token:
-        initial_line = self.line
-        initial_column = self.column
-        
-        self.position += 1
-        self.column += 1      
-
-        next_char = self.source[self.position] if self.position < self.length else 'EOF'
-
-        handler = self.transition_table['OR'].get(next_char, self.transition_table['OR']['default'])
-
-        if handler == 'INVALID':
-    
-            raise LexerError("Operador invalido!", initial_line, initial_column)
-
-        self.position += 1
-        self.column += 1            
-
-        return Token(kind=TokenKind.LOGICAL_OR,lexeme="||", value=None, line=initial_line, column=initial_column)
-
-
-
-    def state_and(self) -> Token:
+    def state_and_or(self) -> Token:
         initial_line = self.line
         initial_column = self.column
 
+        lexeme = ""
+        lexeme += self.source[self.position]
+
         self.position += 1
-        self.column += 1      
+        self.column += 1
 
         next_char = self.source[self.position] if self.position < self.length else 'EOF'
 
-        handler = self.transition_table['AND'].get(next_char, self.transition_table['AND']['default'])
+        if next_char == "&" or next_char== "|":
+            lexeme += next_char
 
-        if handler == 'INVALID':
+            self.position += 1
+            self.column += 1
 
-            raise LexerError("Operador invalido!", initial_line, initial_column)
+            kind = self.dualoperands[lexeme]
 
-        self.position += 1
-        self.column += 1            
+            return Token(kind=kind, lexeme=lexeme, value=None, line=initial_line, column=initial_column)
 
-        return Token(kind=TokenKind.LOGICAL_AND,lexeme="&&", value=None, line=initial_line, column=initial_column) 
-    
+        raise LexerError("Operador invalido!", initial_line, initial_column)
+
 
 
     def state_comment_line(self) -> None:
