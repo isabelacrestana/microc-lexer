@@ -83,6 +83,8 @@ class Lexer:
         # TODO: inicialize aqui o estado exigido por sua estratégia.
         self.position = 0
         self.length = len(source)
+        self.line = 1
+        self.column = 1
 
         self.transition_table = {
 
@@ -108,65 +110,38 @@ class Lexer:
                 ',': self.state_simple_token,
                 ';': self.state_simple_token,
                 'whitespace': self.state_whitespace,
-                'EOF': self.state_EOF,
                 },
-
-            'identifier':{
-                'alpha': self.state_identifier,
-                'digit': self.state_identifier,
-                'EOF': self.state_accept_identifier,
-                'default': self.state_accept_identifier,
-            },
-
-            'digit': {
-                'digit': self.state_number,
-                'alpha': self.state_invalid,
-                'EOF': self.state_accept_number,
-                'default': self.state_accept_number,
-            },
 
             'slash':{
                 '/': self.state_comment_line,
                 '*': self.state_comment_block,
-                'EOF': self.state_accept,
-                'default': self.state_accept,
+                'default': None,
             },
 
-            'assign': {
-                '=': self.state_equal,
-                'EOF': self.state_accept,
-                'default': self.state_accept,
+           'assign': {
+                '=': 'EQUAL',
+                'default': 'ASSIGN',
             },
-
-            'less':{
-                '=': self.state_less_equal,
-                'EOF': self.state_accept,
-                'default': self.state_accept,
+            'less': {
+                '=': 'LESS_EQUAL',
+                'default': 'LESS',
             },
-
-            'greater':{
-                '=': self.state_greater_equal,
-                'EOF': self.state_accept,
-                'default': self.state_accept,
+            'greater': {
+                '=': 'GREATER_EQUAL',
+                'default': 'GREATER',
             },
-
-            'NOT':{
-                '=': self.state_not_equal,
-                'EOF': self.state_accept,
-                'default': self.state_accept
+            'NOT': {
+                '=': 'NOT_EQUAL',
+                'default': 'NOT',
             },
-
-            'AND':{
-                '&': self.state_accept,
-                'EOF': self.state_invalid,
-                'default': self.state_invalid,
+            'AND': {
+                '&': 'LOGICAL_AND',
+                'default': 'INVALID',
             },
-
-            'OR':{
-                '|': self.state_accept,
-                'EOF': self.state_invalid,
-                'default': self.state_invalid,
-            }   
+            'OR': {
+                '|': 'LOGICAL_OR',
+                'default': 'INVALID',
+            } 
         }
 
         self.simple_tokens = {
@@ -195,37 +170,390 @@ class Lexer:
             "print": TokenKind.KW_PRINT
         }
 
+    #def state_second(self) -> Token:
+
+
+
+
+    def state_or(self) -> Token:
+        initial_line = self.line
+        initial_column = self.column
+        
+        self.position += 1
+        self.column += 1      
+
+        next_char = self.source[self.position] if self.position < self.length else 'EOF'
+
+        handler = self.transition_table['OR'].get(next_char, self.transition_table['OR']['default'])
+
+        if handler == 'INVALID':
+    
+            raise LexerError("Operador invalido!", initial_line, initial_column)
+
+        self.position += 1
+        self.column += 1            
+
+        return Token(kind=TokenKind.LOGICAL_OR,lexeme="||", value=None, line=initial_line, column=initial_column)
+
+
+
+    def state_and(self) -> Token:
+        initial_line = self.line
+        initial_column = self.column
+
+        self.position += 1
+        self.column += 1      
+
+        next_char = self.source[self.position] if self.position < self.length else 'EOF'
+
+        handler = self.transition_table['AND'].get(next_char, self.transition_table['AND']['default'])
+
+        if handler == 'INVALID':
+
+            raise LexerError("Operador invalido!", initial_line, initial_column)
+
+        self.position += 1
+        self.column += 1            
+
+        return Token(kind=TokenKind.LOGICAL_AND,lexeme="&&", value=None, line=initial_line, column=initial_column) 
+        
+    
+
+    def state_not(self) -> Token:
+        initial_line = self.line
+        initial_column = self.column
+        
+        self.position += 1
+        self.column += 1      
+
+        next_char = self.source[self.position] if self.position < self.length else 'EOF'
+        
+        handler = self.transition_table['NOT'].get(next_char, self.transition_table['NOT']['default'])
+
+        if handler == 'NOT_EQUAL':
+            self.position += 1
+            self.column += 1
+
+            return Token(kind=TokenKind.NOT_EQUAL, lexeme="!=", value=None, line=initial_line, column=initial_column)
+
+        return Token(kind=TokenKind.LOGICAL_NOT, lexeme="!", value=None, line=initial_line, column=initial_column)
+
+
+
+    def state_greater(self) -> Token:
+        initial_line = self.line
+        initial_column = self.column
+        
+        self.position += 1
+        self.column += 1      
+
+        next_char = self.source[self.position] if self.position < self.length else 'EOF'
+        
+        handler = self.transition_table['greater'].get(next_char, self.transition_table['greater']['default'])
+
+        if handler == 'GREATER_EQUAL':
+            self.position += 1
+            self.column += 1
+
+            return Token(kind=TokenKind.GREATER_EQUAL, lexeme=">=", value=None, line=initial_line, column=initial_column)
+
+        return Token(kind=TokenKind.GREATER, lexeme=">", value=None, line=initial_line, column=initial_column)
+          
+
+
+    def state_less(self) -> Token:
+        initial_line = self.line
+        initial_column = self.column
+
+        self.position += 1
+        self.column += 1        
+
+        next_char = self.source[self.position] if self.position < self.length else 'EOF'
+        
+        handler = self.transition_table['less'].get(next_char, self.transition_table['less']['default'])
+
+        if handler == 'LESS_EQUAL':
+            self.position += 1
+            self.column += 1
+
+            return Token(kind=TokenKind.LESS_EQUAL, lexeme="<=", value=None, line=initial_line, column=initial_column)
+
+        return Token(kind=TokenKind.LESS, lexeme="<", value=None, line=initial_line, column=initial_column)
+
+        
+
+    def state_assign(self) -> Token:
+        initial_line = self.line
+        initial_column = self.column
+
+        self.position += 1
+        self.column += 1
+
+        next_char = self.source[self.position] if self.position < self.length else 'EOF'
+
+        handler = self.transition_table['assign'].get(next_char, self.transition_table['assign']['default'])
+
+        if handler == 'EQUAL':
+            self.position += 1
+            self.column += 1
+
+            return Token(kind= TokenKind.EQUAL_EQUAL, lexeme="==", value=None, line=initial_line, column=initial_column)
+
+        return Token(kind=TokenKind.ASSIGN, lexeme='=', value=None, line=initial_line,column=initial_column)
+
+
+
+    def state_comment_line(self) -> None:
+        self.position += 1
+        self.column += 1
+
+        while self.position < self.length and self.source[self.position] != '\n':
+            self.position += 1
+            self.column += 1
+
+        return None
+    
+
+
+    def state_comment_block(self, initial_line: int, initial_column: int) -> None:
+
+        self.position += 1
+        self.column += 1
+
+        while self.position < self.length:
+
+            char = self.source[self.position]
+            next_char = self.source[self.position + 1] if self.position + 1 < self.length else 'EOF'
+
+            if char == '*' and next_char == '/':
+                self.position += 2
+                self.column += 2
+                return None
+
+            if char == '\n':
+                self.line += 1
+                self.column = 1
+
+            else:
+                self.column += 1
+
+            self.position += 1
+
+        raise LexerError("Comentário de bloco não fechado", initial_line, initial_column)
+
+
+
+    def state_slash(self) -> Token | None:
+        initial_line = self.line
+        initial_column = self.column
+
+        self.position += 1
+        self.column += 1
+
+        next_char = self.source[self.position] if self.position < self.length else 'EOF'
+
+        handler = self.transition_table['slash'].get(next_char, self.transition_table['slash']['default'])
+
+        if handler == self.state_comment_line:
+            return self.state_comment_line()
+        elif handler == self.state_comment_block:
+            return self.state_comment_block(initial_line=initial_line, initial_column=initial_column)
+        
+        return Token(kind=TokenKind.SLASH, lexeme='/', value= None, line= initial_line, column=initial_column )
+
+
+
     def state_simple_token(self) -> Token:
-        inicial_line = self.line
-        inicial_column = self.column
+        initial_line = self.line
+        initial_column = self.column
 
         char = self.source[self.position]
+        kind = self.simple_tokens[char]
 
         self.column += 1
         self.position += 1
 
-        kind = self.simple_tokens[char]
+        return Token(kind, char, None, initial_line, initial_column)
 
-        return Token(kind, char, None, inicial_line, inicial_column)
+
 
     def state_whitespace(self) -> None:
 
-        return None
-
-
-    def tokens(self) -> Iterator[Token]:
-        """Produza todos os tokens significativos e um único EOF ao final."""
-        raise NotImplementedError("implemente o analisador léxico")
-        yield  # mantém este método como gerador durante o desenvolvimento
-
-    def scan(self) -> list[Token]:
-
-        while self.position > len(self.source):
+        while self.position < self.length and self.source[self.position].isspace():
 
             char = self.source[self.position]
 
-            if char.isspace():
-                self.state_whitespace(self)
+            if char == '\n':
+                self.line += 1
+                self.column = 1
+            else:
+                self.column += 1
+
+            self.position += 1 
+
+        return None
+
+    def state_string(self) -> Token:
+        initial_line = self.line
+        initial_column = self.column
+        
+        # Guardamos a posição inicial para recortar o lexema real direto do código
+        start_pos = self.position
+        
+        # Usamos uma lista para montar o valor da string com os escapes decodificados
+        value_chars = []
+
+        # Pula a aspa dupla de abertura
+        self.position += 1
+        self.column += 1
+
+        while self.position < self.length:
+            char = self.source[self.position]
+
+            # 1. Condição de parada: aspa dupla de fechamento
+            if char == '"':
+                self.position += 1
+                self.column += 1
+                
+                # Lexema é o texto exato do código-fonte (ex: "\"abc\\n\"")
+                lexeme = self.source[start_pos:self.position]
+                
+                # Value é a string decodificada na memória (ex: "abc" seguido de quebra de linha)
+                value = "".join(value_chars)
+                
+                return Token(
+                    kind=TokenKind.STRING_LITERAL,
+                    lexeme=lexeme,
+                    value=value,
+                    line=initial_line,
+                    column=initial_column
+                )
+
+            # 2. Quebra de linha não escapada no meio da string (erro léxico)
+            if char == '\n':
+                raise LexerError("String não fechada", self.line, self.column)
+
+            # 3. Tratamento da barra de escape (\)
+            if char == '\\':
+                # Salva a linha e coluna exatas da barra invertida para caso o escape seja inválido
+                esc_line = self.line
+                esc_col = self.column
+                
+                self.position += 1
+                self.column += 1
+
+                # Se o arquivo acabar logo depois da barra
+                if self.position >= self.length:
+                    raise LexerError("String não fechada", initial_line, initial_column)
+
+                # Decodifica o próximo caractere
+                next_char = self.source[self.position]
+                if next_char == 'n':
+                    value_chars.append('\n')
+                elif next_char == 't':
+                    value_chars.append('\t')
+                elif next_char == '"':
+                    value_chars.append('"')
+                elif next_char == '\\':
+                    value_chars.append('\\')
+                else:
+                    # Lança o erro apontando EXATAMENTE para o local do `\`
+                    raise LexerError("Sequência de escape inválida", esc_line, esc_col)
+
+                self.position += 1
+                self.column += 1
+                
+            # 4. Qualquer outro caractere comum
+            else:
+                value_chars.append(char)
+                self.position += 1
+                self.column += 1
+
+        # 5. Se o while terminar e a string não tiver sido fechada, 
+        # o erro deve apontar para onde a string COMEÇOU
+        raise LexerError("String não fechada", initial_line, initial_column)
+
+
+    def state_number(self) -> Token:
+        initial_line = self.line
+        initial_column = self.column
+        digits = ""
+
+        while self.position < self.length and self.source[self.position].isdigit():
             
+            digits += self.source[self.position]
+
+            self.position += 1
+            self.column += 1
+
+        return Token(kind=TokenKind.INT_LITERAL, lexeme=digits, value=int(digits), line=initial_line, column=initial_column)
+
+
+    def state_identifier(self) -> Token:
+        initial_line = self.line
+        initial_column = self.column
+        identifier = ""
+
+        while self.position < self.length:
+            char = self.source[self.position]
+            if (char.isascii() and char.isalnum()) or char == '_':
+                identifier += char
+                self.position += 1
+                self.column += 1
+            else:
+                break
+
+        lexeme = identifier
+
+        if identifier in self.keywords:
+            kind = self.keywords[identifier]
+            
+            if kind == TokenKind.KW_TRUE:
+                value = True
+            elif kind == TokenKind.KW_FALSE:
+                value = False
+            else:
+                value = None 
+        else:
+            kind = TokenKind.IDENTIFIER
+            value = identifier
+
+        return Token(kind=kind, lexeme=lexeme, value=value, line=initial_line, column=initial_column)
+    
+    def tokens(self) -> Iterator[Token]:
+        """Produza todos os tokens significativos e um único EOF ao final."""
+
+        while self.position < self.length:
+            char = self.source[self.position]
+
+            # 1. Classifica o caractere para consultar a tabela
+            if (char.isascii() and char.isalpha()) or char == '_':
+                key = 'alpha'
+            elif char.isdigit():
+                key = 'digit'
+            elif char.isspace():
+                key = 'whitespace'
+            else:
+                key = char
+
+            # 2. Busca a função de transição mapeada no estado 'start'
+            handler = self.transition_table['start'].get(key)
+
+            if handler is None:
+                raise LexerError(f"Caractere inválido: {char!r}", self.line, self.column)
+
+            # 3. Executa a função do estado
+            token = handler()
+
+            # 4. Emite o token se ele existir (whitespace retorna None)
+            if token is not None:
+                yield token
+
+        # 5. Emite o token obrigatório de fim de arquivo
+        yield Token(TokenKind.EOF, "", None, self.line, self.column)
+    
+
+    def scan(self) -> list[Token]:
+
         return list(self.tokens())
 
